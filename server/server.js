@@ -55,14 +55,36 @@ app.use((req, res, next) => {
 // ------------------------------------
 
 // --- Rate Limiting ---
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res, next, options) => { console.warn(`Rate limit exceeded for IP: ${req.ip}`); res.status(options.statusCode).json({ message: `Too many requests, try again after ${Math.ceil(options.windowMs / 60 / 1000)} minutes` }); }
+  handler: (req, res, next, options) => { 
+    console.warn(`Rate limit exceeded for IP: ${req.ip}`); 
+    res.status(options.statusCode).json({ 
+      message: `Too many requests, try again after ${Math.ceil(options.windowMs / 60 / 1000)} minutes` 
+    }); 
+  }
 });
-app.use('/api', limiter);
+
+// Stricter rate limiting for admin verification
+const adminVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 attempts per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res, next, options) => {
+    console.warn(`Admin verification rate limit exceeded for IP: ${req.ip}`);
+    res.status(options.statusCode).json({
+      message: `Too many admin verification attempts. Please try again after ${Math.ceil(options.windowMs / 60 / 1000)} hours`
+    });
+  }
+});
+
+// Apply rate limiters
+app.use('/api', generalLimiter);
+app.use('/api/auth/verify-admin', adminVerificationLimiter);
 
 // --- API Routes ---
 app.get('/api/health', (req, res) => res.status(200).send('API is running healthy!'));
