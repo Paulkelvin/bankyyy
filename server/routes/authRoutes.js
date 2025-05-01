@@ -79,6 +79,7 @@ router.post(
     async (req, res, next) => { // Route handler logic
         const { email, password } = req.body;
         const secret = process.env.JWT_SECRET; // Access env var inside handler
+        console.log(`>>> Login attempt for email: ${email}`);
 
          if (!secret) {
              console.error('JWT_SECRET is missing when trying to log in.');
@@ -88,19 +89,32 @@ router.post(
          }
 
         try {
+            console.log(`>>> Finding user with email: ${email}`);
             const user = await User.findOne({ email }).select('+password');
+            console.log(`>>> User found: ${user ? 'Yes' : 'No'}`);
 
-            // Check credentials
-            if (!user || !(await user.matchPassword(password))) {
-                 // *** CHANGED HERE: Use next(error) for invalid credentials ***
-                 const error = new Error('Invalid credentials');
-                 error.statusCode = 401; // Unauthorized
-                 return next(error);
+            if (!user) {
+                console.log(`>>> No user found with email: ${email}`);
+                const error = new Error('Invalid credentials');
+                error.statusCode = 401;
+                return next(error);
+            }
+
+            console.log(`>>> Attempting password comparison for user: ${user._id}`);
+            const isMatch = await user.matchPassword(password);
+            console.log(`>>> Password match result: ${isMatch}`);
+
+            if (!isMatch) {
+                console.log(`>>> Password mismatch for user: ${user._id}`);
+                const error = new Error('Invalid credentials');
+                error.statusCode = 401;
+                return next(error);
             }
 
             // Credentials are valid, proceed to create token
             const payload = { id: user._id };
             const token = jwt.sign(payload, secret, { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '1h' });
+            console.log(`>>> Login successful for user: ${user._id}`);
 
             // Send SUCCESS response
             res.json({
@@ -115,7 +129,6 @@ router.post(
 
         } catch (err) {
             console.error('Login Error:', err);
-            // Pass unexpected errors (DB errors, etc.) to central handler
             next(err);
         }
     }

@@ -53,14 +53,23 @@ const UserSchema = new mongoose.Schema({
 
 // Instance method to compare passwords
 UserSchema.methods.matchPassword = async function (enteredPassword) {
+    console.log(`>>> matchPassword called for user ${this._id}`);
     // Ensure 'this' context has the password field selected
     if (!this.password) {
-         console.warn(`matchPassword called on user ${this._id} without password field selected!`);
-         // Optionally re-fetch the user with password if needed, or handle error
-         // For now, return false as we cannot compare
-         return false;
+        console.warn(`>>> matchPassword: Password field not selected for user ${this._id}`);
+        // Try to re-fetch the user with password
+        const userWithPassword = await this.constructor.findById(this._id).select('+password');
+        if (!userWithPassword || !userWithPassword.password) {
+            console.error(`>>> matchPassword: Could not retrieve password for user ${this._id}`);
+            return false;
+        }
+        console.log(`>>> matchPassword: Successfully retrieved password for user ${this._id}`);
+        return await bcrypt.compare(enteredPassword, userWithPassword.password);
     }
-    return await bcrypt.compare(enteredPassword, this.password);
+    console.log(`>>> matchPassword: Comparing passwords for user ${this._id}`);
+    const isMatch = await bcrypt.compare(enteredPassword, this.password);
+    console.log(`>>> matchPassword: Password comparison result: ${isMatch}`);
+    return isMatch;
 };
 
 // Optional: Pre-save hook for hashing NEW/MODIFIED passwords
