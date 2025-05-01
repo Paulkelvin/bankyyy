@@ -34,7 +34,14 @@ connectDB(); // Rii daju pe eleyi n sise dada
 const app = express();
 
 // --- Core Middleware ---
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }));
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'https://bankyyy-front.onrender.com'];
+
+app.use(cors({ 
+  origin: allowedOrigins,
+  credentials: true 
+}));
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
