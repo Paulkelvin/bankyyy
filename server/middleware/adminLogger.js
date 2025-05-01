@@ -1,31 +1,21 @@
-import logger from '../config/logger.js';
+import { logger } from './logging.js';
 
-const adminLogger = (req, res, next) => {
-    const logPrefix = ">>> Admin Access:";
-    const ip = req.ip;
-    const timestamp = new Date().toISOString();
-    const userAgent = req.get('user-agent');
-
-    // Log the attempt
-    const logMessage = {
-        timestamp,
-        ip,
-        userAgent,
-        endpoint: req.originalUrl,
-        method: req.method
+// Middleware to log admin access attempts
+export const adminLogger = (req, res, next) => {
+    const logData = {
+        timestamp: new Date().toISOString(),
+        ip: req.ip,
+        method: req.method,
+        path: req.path,
+        userAgent: req.get('user-agent'),
+        body: req.body // Log the request body for admin verification attempts
     };
 
-    // Use logger if available, otherwise console
-    if (logger) {
-        logger.info(`${logPrefix} Attempt`, logMessage);
-    } else {
-        console.log(`${logPrefix} Attempt`, logMessage);
-    }
+    // Log the admin access attempt
+    logger.info('Admin access attempt', logData);
 
-    // Add the log info to the request for use in the controller
-    req.adminLogInfo = logMessage;
+    // Add the log data to the request for potential use in the controller
+    req.adminLogData = logData;
 
     next();
-};
-
-export default adminLogger; 
+}; 
