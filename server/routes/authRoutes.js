@@ -23,29 +23,30 @@ router.post(
 
         if (!secret) {
              console.error('JWT_SECRET is missing when trying to register user.');
-             // Pass configuration error to central handler
              const error = new Error('Server configuration error (JWT Secret missing).');
              error.statusCode = 500;
              return next(error);
         }
 
         try {
+            console.log(`>>> Checking for existing user with email: ${email}`);
             const existingUser = await User.findOne({ email });
             if (existingUser) {
-                // Pass conflict error to central handler
+                console.log(`>>> User already exists with email: ${email}`);
                 const error = new Error('User already exists with this email');
                 error.statusCode = 409; // Conflict
                 return next(error);
             }
 
-            const hashedPassword = await bcrypt.hash(password, 10);
-
+            console.log(`>>> Creating new user with email: ${email}`);
+            // Let the pre-save hook handle password hashing
             const user = await User.create({
                 name,
                 email,
-                password: hashedPassword
+                password // Pass plain password, let pre-save hook hash it
             });
 
+            console.log(`>>> User created successfully with ID: ${user._id}`);
             const payload = { id: user._id };
             const token = jwt.sign(payload, secret, { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '1h' });
 
@@ -62,7 +63,6 @@ router.post(
 
         } catch (err) {
             console.error('Registration Error:', err);
-            // Pass unexpected errors (DB errors, etc.) to central handler
             next(err);
         }
     }

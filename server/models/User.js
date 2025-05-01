@@ -51,40 +51,49 @@ const UserSchema = new mongoose.Schema({
     timestamps: true // Keep timestamps
 });
 
-// Instance method to compare passwords
-UserSchema.methods.matchPassword = async function (enteredPassword) {
-    console.log(`>>> matchPassword called for user ${this._id}`);
-    // Ensure 'this' context has the password field selected
-    if (!this.password) {
-        console.warn(`>>> matchPassword: Password field not selected for user ${this._id}`);
-        // Try to re-fetch the user with password
-        const userWithPassword = await this.constructor.findById(this._id).select('+password');
-        if (!userWithPassword || !userWithPassword.password) {
-            console.error(`>>> matchPassword: Could not retrieve password for user ${this._id}`);
-            return false;
-        }
-        console.log(`>>> matchPassword: Successfully retrieved password for user ${this._id}`);
-        return await bcrypt.compare(enteredPassword, userWithPassword.password);
-    }
-    console.log(`>>> matchPassword: Comparing passwords for user ${this._id}`);
-    const isMatch = await bcrypt.compare(enteredPassword, this.password);
-    console.log(`>>> matchPassword: Password comparison result: ${isMatch}`);
-    return isMatch;
-};
-
-// Optional: Pre-save hook for hashing NEW/MODIFIED passwords
-// If you handle hashing manually during registration/password change, keep this commented
+// Pre-save hook for hashing passwords
 UserSchema.pre('save', async function(next) {
-   if (!this.isModified('password')) {
-       return next();
-   }
-   console.log(`Hashing password for user ${this._id || this.email}...`);
-   const salt = await bcrypt.genSalt(10);
-   this.password = await bcrypt.hash(this.password, salt);
-   console.log(`Password hashed for user ${this._id || this.email}.`);
-   next();
+    try {
+        if (!this.isModified('password')) {
+            console.log(`>>> Password not modified for user ${this._id || this.email}, skipping hash`);
+            return next();
+        }
+        console.log(`>>> Hashing password for user ${this._id || this.email}...`);
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        console.log(`>>> Password hashed successfully for user ${this._id || this.email}`);
+        next();
+    } catch (error) {
+        console.error(`>>> Error hashing password for user ${this._id || this.email}:`, error);
+        next(error);
+    }
 });
 
+// Instance method to compare passwords
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+    try {
+        console.log(`>>> matchPassword called for user ${this._id}`);
+        // Ensure 'this' context has the password field selected
+        if (!this.password) {
+            console.warn(`>>> matchPassword: Password field not selected for user ${this._id}`);
+            // Try to re-fetch the user with password
+            const userWithPassword = await this.constructor.findById(this._id).select('+password');
+            if (!userWithPassword || !userWithPassword.password) {
+                console.error(`>>> matchPassword: Could not retrieve password for user ${this._id}`);
+                return false;
+            }
+            console.log(`>>> matchPassword: Successfully retrieved password for user ${this._id}`);
+            return await bcrypt.compare(enteredPassword, userWithPassword.password);
+        }
+        console.log(`>>> matchPassword: Comparing passwords for user ${this._id}`);
+        const isMatch = await bcrypt.compare(enteredPassword, this.password);
+        console.log(`>>> matchPassword: Password comparison result: ${isMatch}`);
+        return isMatch;
+    } catch (error) {
+        console.error(`>>> Error in matchPassword for user ${this._id}:`, error);
+        return false;
+    }
+};
 
 const User = mongoose.model('User', UserSchema);
 
