@@ -131,9 +131,9 @@ export const verifyAdmin = async (req, res, next) => {
     console.log(`${logPrefix} Attempting admin verification...`);
 
     try {
-        const { adminPassword } = req.body;
+        const { password } = req.body;
         
-        if (!adminPassword) {
+        if (!password) {
             console.warn(`${logPrefix} No admin password provided`);
             return res.status(400).json({ 
                 success: false, 
@@ -142,9 +142,17 @@ export const verifyAdmin = async (req, res, next) => {
         }
 
         // Get admin password from environment variable
-        const correctPassword = process.env.ADMIN_PASSWORD || 'qwerty';
+        const correctPassword = process.env.ADMIN_PASSWORD;
         
-        if (adminPassword !== correctPassword) {
+        if (!correctPassword) {
+            console.error(`${logPrefix} ADMIN_PASSWORD environment variable is not set`);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Server configuration error' 
+            });
+        }
+        
+        if (password !== correctPassword) {
             console.warn(`${logPrefix} Invalid admin password attempt`);
             return res.status(401).json({ 
                 success: false, 
