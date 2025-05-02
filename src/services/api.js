@@ -62,6 +62,7 @@ const api = {
   // --- User Profile ---
   getUserProfile() { return this.request('/users/profile'); },
   updateUserProfile(profileData) { return this.request('/users/profile', { method: 'PUT', body: JSON.stringify(profileData) }); },
+  deleteUserProfile() { return this.request('/users/profile', { method: 'DELETE' }); },
 
   // --- Accounts ---
   getAccounts() { return this.request('/accounts'); },

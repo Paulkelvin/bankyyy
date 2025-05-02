@@ -1,6 +1,8 @@
 // server/controllers/userController.js
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Account from '../models/Account.js';
+import Transaction from '../models/Transaction.js';
 // import logger from '../config/logger.js'; // Use console if logger not set up
 
 // @desc    Get user profile
@@ -94,6 +96,49 @@ export const updateUserProfile = async (req, res, next) => {
         next(error);
     }
      // console.log(`${logPrefix} CONTROLLER END <<<`);
+};
+
+// @desc    Delete user profile
+// @route   DELETE /api/users/profile
+// @access  Private
+export const deleteUserProfile = async (req, res, next) => {
+    const logPrefix = ">>> deleteUserProfile:";
+    console.log(`${logPrefix} CONTROLLER START <<<`);
+
+    if (!req.user || !req.user._id) {
+        console.error(`${logPrefix} ERROR - req.user or req.user._id is missing!`);
+        throw Object.assign(new Error('Not authorized, user data missing.'), { statusCode: 401 });
+    }
+    const userId = req.user._id;
+    console.log(`${logPrefix} User ID from req.user: ${userId}`);
+
+    try {
+        // First, delete all user's accounts and their transactions
+        console.log(`${logPrefix} Deleting user's accounts and transactions...`);
+        const accounts = await Account.find({ userId });
+        
+        for (const account of accounts) {
+            // Delete transactions for each account
+            await Transaction.deleteMany({ accountId: account._id });
+            // Delete the account
+            await Account.findByIdAndDelete(account._id);
+        }
+        console.log(`${logPrefix} Deleted ${accounts.length} accounts and their transactions`);
+
+        // Finally, delete the user
+        console.log(`${logPrefix} Deleting user document...`);
+        await User.findByIdAndDelete(userId);
+        console.log(`${logPrefix} User deleted successfully`);
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'User profile and all associated data deleted successfully' 
+        });
+
+    } catch (error) {
+        console.error(`${logPrefix} Error deleting user profile:`, error);
+        next(error);
+    }
 };
 
 // --- REMOVED REDUNDANT EXPORT BLOCK ---

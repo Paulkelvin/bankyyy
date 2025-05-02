@@ -6,6 +6,7 @@ import { validateRequest } from '../middleware/validateRequest.js'; // Handle va
 import {
   getUserProfile,
   updateUserProfile,
+  deleteUserProfile,
 } from '../controllers/userController.js'; // Import controller functions
 
 const router = express.Router();
@@ -48,5 +49,8 @@ router.put(
   validateRequest, // Check validation results
   updateUserProfile // Call controller function
 );
+
+// DELETE /api/users/profile - Delete logged-in user's profile
+router.delete('/profile', deleteUserProfile);
 
 export default router;
