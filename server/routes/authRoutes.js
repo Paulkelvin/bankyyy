@@ -7,7 +7,7 @@ import User from '../models/User.js';
 import { validateRequest } from '../middleware/validateRequest.js'; // Import validation middleware
 import { login, register, verifyAdmin } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
-import adminLogger from '../middleware/adminLogger.js';
+import { adminLogger } from '../middleware/adminLogger.js';
 
 const router = express.Router();
 
