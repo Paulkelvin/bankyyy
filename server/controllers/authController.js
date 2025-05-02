@@ -5,38 +5,56 @@ import User from '../models/User.js';
 // @route   POST /api/auth/register
 // @access  Public
 export const register = async (req, res, next) => {
+    const logPrefix = ">>> register:";
+    console.log(`${logPrefix} Registration attempt started`);
+    console.log(`${logPrefix} Request body:`, req.body);
+    
     const { name, email, password } = req.body;
     const secret = process.env.JWT_SECRET;
 
     if (!secret) {
-        console.error('JWT_SECRET is missing when trying to register user.');
+        console.error(`${logPrefix} JWT_SECRET is missing when trying to register user.`);
         const error = new Error('Server configuration error (JWT Secret missing).');
         error.statusCode = 500;
         return next(error);
     }
 
+    // Validate required fields
+    if (!name || !email || !password) {
+        console.warn(`${logPrefix} Missing required fields:`, { 
+            hasName: !!name, 
+            hasEmail: !!email, 
+            hasPassword: !!password 
+        });
+        const error = new Error('All fields (name, email, password) are required');
+        error.statusCode = 400;
+        return next(error);
+    }
+
     try {
-        console.log(`>>> Checking for existing user with email: ${email}`);
+        console.log(`${logPrefix} Checking for existing user with email: ${email}`);
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            console.log(`>>> User already exists with email: ${email}`);
+            console.log(`${logPrefix} User already exists with email: ${email}`);
             const error = new Error('User already exists with this email');
             error.statusCode = 409; // Conflict
             return next(error);
         }
 
-        console.log(`>>> Creating new user with email: ${email}`);
+        console.log(`${logPrefix} Creating new user with email: ${email}`);
         const user = await User.create({
             name,
             email,
             password
         });
 
-        console.log(`>>> User created successfully with ID: ${user._id}`);
+        console.log(`${logPrefix} User created successfully with ID: ${user._id}`);
         const payload = { id: user._id };
         const token = jwt.sign(payload, secret, { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '1h' });
 
+        console.log(`${logPrefix} Registration successful, sending response`);
         res.status(201).json({
+            success: true,
             message: 'User registered successfully',
             token,
             user: {
@@ -47,7 +65,7 @@ export const register = async (req, res, next) => {
         });
 
     } catch (err) {
-        console.error('Registration Error:', err);
+        console.error(`${logPrefix} Registration Error:`, err);
         next(err);
     }
 };
