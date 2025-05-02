@@ -129,6 +129,9 @@ export const login = async (req, res, next) => {
 export const verifyAdmin = async (req, res, next) => {
     const logPrefix = ">>> verifyAdmin:";
     console.log(`${logPrefix} Attempting admin verification...`);
+    console.log(`${logPrefix} Request body:`, req.body);
+    console.log(`${logPrefix} ADMIN_PASSWORD env var exists:`, !!process.env.ADMIN_PASSWORD);
+    console.log(`${logPrefix} ADMIN_PASSWORD length:`, process.env.ADMIN_PASSWORD?.length);
 
     try {
         const { password } = req.body;
@@ -152,6 +155,7 @@ export const verifyAdmin = async (req, res, next) => {
             });
         }
         
+        console.log(`${logPrefix} Comparing passwords - Provided: "${password}", Expected: "${correctPassword}"`);
         if (password !== correctPassword) {
             console.warn(`${logPrefix} Invalid admin password attempt`);
             return res.status(401).json({ 
