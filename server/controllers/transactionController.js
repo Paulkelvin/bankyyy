@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import Transaction from '../models/Transaction.js';
 import Account from '../models/Account.js';
 import User from '../models/User.js';
+import { sendOtpEmail } from '../config/emailConfig.js';
 
 // Constants
 const OTP_EXPIRY_MINUTES = 10;
@@ -148,7 +149,6 @@ export const createTransaction = async (req, res, next) => {
 
 // --- OTP Related Functions (keep as is) ---
 export const initiateTransfer = async (req, res, next) => {
-    // ... (your existing initiateTransfer logic - no changes needed here)
     const logPrefix = ">>> initiateTransfer:";
     console.log(`${logPrefix} CONTROLLER START`);
     if (!req.user || !req.user._id) { throw Object.assign(new Error('Not authorized'), { statusCode: 401 }); }
@@ -169,12 +169,6 @@ export const initiateTransfer = async (req, res, next) => {
     } catch (e) { throw Object.assign(new Error('Invalid amount format'), { statusCode: 400 }); }
 
     try {
-        console.log(`${logPrefix} Finding user ${userId} and checking phone...`);
-        const user = await User.findById(userId).select('+phoneNumber');
-        if (!user) { throw Object.assign(new Error('User not found.'), { statusCode: 404 }); }
-        if (!user.phoneNumber) { throw Object.assign(new Error('No registered phone number found for OTP verification.'), { statusCode: 400 }); }
-        console.log(`${logPrefix} User phone found.`);
-
         console.log(`${logPrefix} Finding 'from' account ${fromAccountId} and checking funds...`);
         const fromAccount = await Account.findOne({ _id: fromAccountId, userId: userId });
         if (!fromAccount) { throw Object.assign(new Error('Sending account not found or access denied.'), { statusCode: 404 }); }
@@ -185,12 +179,12 @@ export const initiateTransfer = async (req, res, next) => {
 
         console.log(`${logPrefix} Validating recipient account...`);
         if (transferType === 'internal') {
-             if (fromAccountId === toAccountId) { throw Object.assign(new Error('Cannot transfer to the same account.'), { statusCode: 400 }); }
+            if (fromAccountId === toAccountId) { throw Object.assign(new Error('Cannot transfer to the same account.'), { statusCode: 400 }); }
             const toAccountExists = await Account.exists({ _id: toAccountId, userId: userId });
             if (!toAccountExists) { throw Object.assign(new Error('Internal recipient account not found or not owned by user.'), { statusCode: 404 }); }
         } else if (transferType === 'external') {
-             const recipientAccountExists = await Account.exists({ accountNumber: recipientAccountNumber.trim() });
-             if (!recipientAccountExists) { throw Object.assign(new Error('Recipient account number not found.'), { statusCode: 404 }); }
+            const recipientAccountExists = await Account.exists({ accountNumber: recipientAccountNumber.trim() });
+            if (!recipientAccountExists) { throw Object.assign(new Error('Recipient account number not found.'), { statusCode: 404 }); }
         } else {
             throw Object.assign(new Error('Invalid transfer type specified.'), { statusCode: 400 });
         }
@@ -205,12 +199,11 @@ export const initiateTransfer = async (req, res, next) => {
         await User.findByIdAndUpdate(userId, { otpCode: hashedOtp, otpCodeExpires: otpExpiry });
         console.log(`${logPrefix} OTP hash and expiry saved for user ${userId}.`);
 
-        console.log(`${logPrefix} SMS Sending step skipped (TODO).`);
-
         console.log(`${logPrefix} CONTROLLER SUCCESS - Sending 200`);
         res.status(200).json({
             success: true,
-            message: `OTP generated (check console). Please verify to complete the transfer.`
+            message: 'OTP generated successfully',
+            otp: otp // Send the OTP directly to the frontend
         });
 
     } catch (error) {
