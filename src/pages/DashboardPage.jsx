@@ -101,24 +101,15 @@ const DashboardPage = ({ onNavigateToProfile }) => {
 
     // Fetch initial accounts data on mount
     useEffect(() => {
-        console.log("Dashboard mounted, fetching accounts.");
+        console.log("Dashboard mounted or fetchAccounts dependency changed, fetching accounts.");
         fetchAccounts();
-        // DO NOT fetch transactions here initially
     }, [fetchAccounts]);
 
     // --- NEW Effect to fetch transactions when selectedAccountId changes ---
     useEffect(() => {
-        if (selectedAccountId) {
-            // *** ADD THIS LOG ***
-            console.log(`>>> useEffect[selectedAccountId]: Account ID changed to ${selectedAccountId}. Triggering fetchTransactions.`);
-            fetchTransactions(selectedAccountId);
-        } else {
-            // Handle case where there's no selected account (e.g., no accounts yet)
-            console.log(">>> useEffect[selectedAccountId]: No account selected. Clearing transactions."); // Optional log
-            setTransactions([]);
-            setIsLoadingTransactions(false);
-        }
-    }, [selectedAccountId, fetchTransactions]); // Run when selectedAccountId changes
+        console.log("selectedAccountId changed:", selectedAccountId);
+        fetchTransactions(selectedAccountId);
+    }, [selectedAccountId, fetchTransactions]);
 
     // --- NEW Effect for fade-in ---
     // ... (fade-in effect remains the same) ...
@@ -127,16 +118,22 @@ const DashboardPage = ({ onNavigateToProfile }) => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Handler to refresh data after actions
-    const handleActionSuccess = ({ updatedAccount, newTransaction }) => {
-        // Update accounts state
-        setAccounts(prev =>
-            prev.map(acc =>
-                acc._id === updatedAccount._id ? { ...acc, balance: updatedAccount.balance } : acc
-            )
-        );
-        // Add new transaction to the top of the list
-        setTransactions(prev => [newTransaction, ...prev]);
+    // Handler to update state after actions (no reloads, no fetches)
+    const handleActionSuccess = ({ updatedAccount, newTransaction, newAccount }) => {
+        console.log('handleActionSuccess called:', { updatedAccount, newTransaction, newAccount });
+        if (updatedAccount) {
+            setAccounts(prev =>
+                prev.map(acc =>
+                    acc._id === updatedAccount._id ? { ...acc, balance: updatedAccount.balance } : acc
+                )
+            );
+        }
+        if (newTransaction) {
+            setTransactions(prev => [newTransaction, ...prev]);
+        }
+        if (newAccount) {
+            setAccounts(prev => [...prev, newAccount]);
+        }
     };
 
     // --- Render Logic (no changes needed below) ---
