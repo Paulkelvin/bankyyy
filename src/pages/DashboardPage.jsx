@@ -128,16 +128,15 @@ const DashboardPage = ({ onNavigateToProfile }) => {
     }, []);
 
     // Handler to refresh data after actions
-    const handleActionSuccess = () => {
-        console.log("Action successful, refreshing accounts...");
-        fetchAccounts(); // This will trigger re-fetching accounts
-        // The useEffect watching selectedAccountId will handle fetching transactions
-        // If the selected account ID hasn't changed, you might need to manually trigger
-        // fetchTransactions(selectedAccountId) if the action modified the current account's history.
-        if (selectedAccountId) {
-             console.log("Refreshing transactions for current account after action.");
-             fetchTransactions(selectedAccountId);
-        }
+    const handleActionSuccess = ({ updatedAccount, newTransaction }) => {
+        // Update accounts state
+        setAccounts(prev =>
+            prev.map(acc =>
+                acc._id === updatedAccount._id ? { ...acc, balance: updatedAccount.balance } : acc
+            )
+        );
+        // Add new transaction to the top of the list
+        setTransactions(prev => [newTransaction, ...prev]);
     };
 
     // --- Render Logic (no changes needed below) ---

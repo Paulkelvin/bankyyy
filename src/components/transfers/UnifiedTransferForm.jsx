@@ -1,4 +1,6 @@
 import OtpFlashScreen from './OtpFlashScreen';
+import api from '../../services/api';
+import { useState } from 'react';
 
 const UnifiedTransferForm = ({ accounts, onTransferSuccess }) => {
   const [showOtpScreen, setShowOtpScreen] = useState(false);
@@ -50,7 +52,9 @@ const UnifiedTransferForm = ({ accounts, onTransferSuccess }) => {
         setCurrentOtp(null);
         setTransferData(null);
         resetForm();
-        onTransferSuccess();
+        const updatedAccount = accounts.find(acc => acc._id === transferData.fromAccountId);
+        const newTransaction = response.transferOut;
+        onTransferSuccess({ updatedAccount: { ...updatedAccount, balance: newTransaction.balanceAfter }, newTransaction });
       }
     } catch (error) {
       console.error('>>> handleVerifyOtp: Error:', error);
