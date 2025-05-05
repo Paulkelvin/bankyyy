@@ -79,7 +79,22 @@ const api = {
 
   // Get transactions
   getTransactions() { return this.request('/transactions'); },
-  getTransactionsForAccount(accountId) { return this.request(`/transactions/account/${accountId}`); }
+  getTransactionsForAccount(accountId) { return this.request(`/transactions/account/${accountId}`); },
+
+  // Transfer endpoints
+  initiateTransfer(transferData) { 
+    return this.request('/transactions/transfer/initiate', { 
+      method: 'POST', 
+      body: JSON.stringify(transferData) 
+    }); 
+  },
+  
+  executeTransfer(transferData) { 
+    return this.request('/transactions/transfer/execute', { 
+      method: 'POST', 
+      body: JSON.stringify(transferData) 
+    }); 
+  },
 };
 
 export default api;
