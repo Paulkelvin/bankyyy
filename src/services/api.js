@@ -1,7 +1,25 @@
 // src/services/api.js
 
-// Configuration
-const API_BASE_URL = 'http://localhost:5000/api'; // Ensure this is correct
+// Configuration - Dynamically detect the current domain
+const getApiBaseUrl = () => {
+  const currentHost = window.location.hostname;
+  const currentProtocol = window.location.protocol;
+  
+  // Check if we're on the production domain
+  if (currentHost === 'haddocks.space' || currentHost === 'www.haddocks.space') {
+    return 'https://haddocks.space/api';
+  }
+  
+  // Check if we're on the old render domain
+  if (currentHost === 'bankyyy-front.onrender.com') {
+    return 'https://bankyyy.onrender.com/api';
+  }
+  
+  // Default to localhost for development
+  return 'http://localhost:5000/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // API Service Object
 const api = {

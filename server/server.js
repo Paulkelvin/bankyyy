@@ -40,7 +40,7 @@ const app = express();
 // --- Core Middleware ---
 const allowedOrigins = process.env.CORS_ORIGINS 
     ? process.env.CORS_ORIGINS.split(',') 
-    : ['http://localhost:5173', 'https://bankyyy-front.onrender.com'];
+    : ['http://localhost:5173', 'https://bankyyy-front.onrender.com', 'https://haddocks.space', 'https://www.haddocks.space'];
 
 // Configure Helmet with CORS compatibility
 app.use(helmet({
