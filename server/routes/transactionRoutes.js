@@ -8,7 +8,8 @@ import {
     getUserTransactions,
     getTransactionsForAccount,
     initiateTransfer,          // NEW: Initiate OTP flow
-    executeTransfer            // NEW: Execute after OTP
+    executeTransfer,            // NEW: Execute after OTP
+    deleteAllUserTransactions
 } from '../controllers/transactionController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
@@ -123,6 +124,9 @@ router.get(
     validateRequest,
     getTransactionsForAccount
 );
+
+// Add route to delete all transactions for the authenticated user
+router.delete('/all', deleteAllUserTransactions);
 
 
 export default router;

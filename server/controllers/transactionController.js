@@ -416,4 +416,20 @@ export const getTransactionsForAccount = async (req, res, next) => {
      }
 };
 
+// Delete all transactions for the authenticated user
+export const deleteAllUserTransactions = async (req, res, next) => {
+    if (!req.user || !req.user._id) {
+        const error = new Error('Not authorized');
+        error.statusCode = 401;
+        return next(error);
+    }
+    const userId = req.user._id;
+    try {
+        const result = await Transaction.deleteMany({ userId });
+        res.status(200).json({ success: true, message: 'All transactions deleted successfully', deletedCount: result.deletedCount });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // No default export needed if using named exports consistently
