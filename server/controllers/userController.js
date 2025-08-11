@@ -32,7 +32,9 @@ export const getUserProfile = async (req, res, next) => {
         console.log(`${logPrefix} Constructing user profile response data...`);
         const userProfile = {
             _id: freshUser._id,
-            name: freshUser.name,
+            username: freshUser.username || freshUser.name || '',
+            fullName: freshUser.fullName || '',
+            name: freshUser.name, // for backward compatibility
             email: freshUser.email,
             phoneNumber: freshUser.phoneNumber || '',
             address: freshUser.address || '',
@@ -59,6 +61,7 @@ export const updateUserProfile = async (req, res, next) => {
     console.log(`${logPrefix} CONTROLLER START <<<`);
     if (!req.user || !req.user._id) { const error = new Error('Not authorized'); error.statusCode = 401; return next(error); }
 
+    // In updateUserProfile, remove fullName update logic (do not allow editing)
     const { name, phoneNumber, address } = req.body;
     console.log(`${logPrefix} Received update data:`, { name, phoneNumber, address });
 

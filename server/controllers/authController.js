@@ -9,7 +9,8 @@ export const register = async (req, res, next) => {
     console.log(`${logPrefix} Registration attempt started`);
     console.log(`${logPrefix} Request body:`, req.body);
     
-    const { name, email, password } = req.body;
+    // Registration: Accept username and fullName
+    const { username, fullName, email, password } = req.body;
     const secret = process.env.JWT_SECRET;
 
     if (!secret) {
@@ -20,46 +21,48 @@ export const register = async (req, res, next) => {
     }
 
     // Validate required fields
-    if (!name || !email || !password) {
-        console.warn(`${logPrefix} Missing required fields:`, { 
-            hasName: !!name, 
-            hasEmail: !!email, 
-            hasPassword: !!password 
+    if (!username || !fullName || !email || !password) {
+        console.warn(`${logPrefix} Missing required fields:`, {
+            hasUsername: !!username,
+            hasFullName: !!fullName,
+            hasEmail: !!email,
+            hasPassword: !!password
         });
-        const error = new Error('All fields (name, email, password) are required');
+        const error = new Error('All fields (username, fullName, email, password) are required');
         error.statusCode = 400;
         return next(error);
     }
 
     try {
-        console.log(`${logPrefix} Checking for existing user with email: ${email}`);
-        const existingUser = await User.findOne({ email });
+        // Check for existing user by email or username
+        const existingUser = await User.findOne({ $or: [{ email }, { username }] });
         if (existingUser) {
-            console.log(`${logPrefix} User already exists with email: ${email}`);
-            const error = new Error('User already exists with this email');
+            console.log(`${logPrefix} User already exists with email or username: ${email}, ${username}`);
+            const error = new Error('User already exists with this email or username');
             error.statusCode = 409; // Conflict
             return next(error);
         }
 
-        console.log(`${logPrefix} Creating new user with email: ${email}`);
+        // Create new user
         const user = await User.create({
-            name,
+            username,
+            fullName,
+            name: username, // For backward compatibility
             email,
             password
         });
 
-        console.log(`${logPrefix} User created successfully with ID: ${user._id}`);
         const payload = { id: user._id };
         const token = jwt.sign(payload, secret, { expiresIn: process.env.JWT_ACCESS_EXPIRATION || '1h' });
 
-        console.log(`${logPrefix} Registration successful, sending response`);
         res.status(201).json({
             success: true,
             message: 'User registered successfully',
             token,
             user: {
                 id: user._id,
-                name: user.name,
+                username: user.username,
+                fullName: user.fullName,
                 email: user.email
             }
         });

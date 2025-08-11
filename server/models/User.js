@@ -3,9 +3,24 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const UserSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: [true, 'Please add a username'],
+        unique: true,
+        trim: true,
+        minlength: 3,
+        maxlength: 32
+    },
+    fullName: {
+        type: String,
+        required: [true, 'Please add your full name'],
+        trim: true,
+        minlength: 2,
+        maxlength: 64
+    },
     name: {
         type: String,
-        required: [true, 'Please add a name']
+        required: false // For backward compatibility
     },
     email: {
         type: String,
