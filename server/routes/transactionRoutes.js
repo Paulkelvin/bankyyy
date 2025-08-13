@@ -14,6 +14,7 @@ import {
 } from '../controllers/transactionController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
+import { populateTransactionsRange } from '../controllers/transactionController.js';
 
 const router = express.Router();
 
@@ -135,6 +136,20 @@ router.delete(
     [param('id', 'Valid transaction id required').isMongoId()],
     validateRequest,
     deleteTransaction
+);
+
+// POST /api/transactions/populate-range - Populate random transactions for a date range (admin/user tool)
+router.post(
+    '/populate-range',
+    [
+        body('accountNumber', 'Account number required').isString().trim().notEmpty(),
+        body('startDate', 'Valid startDate required (ISO date)').isISO8601(),
+        body('endDate', 'Valid endDate required (ISO date)').isISO8601(),
+        body('minPerMonth').optional().isInt({ min: 1, max: 60 }),
+        body('maxPerMonth').optional().isInt({ min: 1, max: 60 })
+    ],
+    validateRequest,
+    populateTransactionsRange
 );
 
 

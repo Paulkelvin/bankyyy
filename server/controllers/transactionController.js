@@ -481,4 +481,120 @@ export const deleteTransaction = async (req, res, next) => {
     }
 };
 
+// Populate random transactions for a user within a date range (no account.balance changes)
+export const populateTransactionsRange = async (req, res, next) => {
+    const logPrefix = '>>> populateTransactionsRange:';
+    try {
+        if (!req.user || !req.user._id) { const error = new Error('Not authorized'); error.statusCode = 401; return next(error); }
+        const userId = req.user._id;
+        const { accountNumber, startDate, endDate, minPerMonth = 7, maxPerMonth = 13 } = req.body || {};
+
+        if (!accountNumber || !startDate || !endDate) {
+            const error = new Error('accountNumber, startDate and endDate are required'); error.statusCode = 400; return next(error);
+        }
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (isNaN(start) || isNaN(end) || start > end) {
+            const error = new Error('Invalid date range'); error.statusCode = 400; return next(error);
+        }
+        if (minPerMonth > maxPerMonth || minPerMonth < 1) {
+            const error = new Error('Invalid monthly range'); error.statusCode = 400; return next(error);
+        }
+
+        // Find the user's account by number
+        const account = await Account.findOne({ userId, accountNumber: accountNumber.toString().trim() });
+        if (!account) { const error = new Error('Account not found for current user'); error.statusCode = 404; return next(error); }
+
+        // Description pool
+        const descriptions = [
+            'Salary', 'Groceries', 'Online Shopping', 'ATM Withdrawal', 'Bill Payment', 'Interest', 'Dining', 'Utilities',
+            'Subscription', 'Bonus', 'Gift', 'Medical', 'Travel', 'Cashback', 'Fee', 'Gym Membership', 'Fuel', 'Ride Share', 'Streaming', 'Pharmacy'
+        ];
+        const pickDesc = (type) => type === 'deposit' ? ['Salary','Bonus','Refund','Interest','Gift','Cashback'][Math.floor(Math.random()*6)] : descriptions[Math.floor(Math.random()*descriptions.length)];
+        const randTime = () => {
+            const h = Math.floor(Math.random()*24).toString().padStart(2,'0');
+            const m = Math.floor(Math.random()*60).toString().padStart(2,'0');
+            return `${h}:${m}`;
+        };
+        const randAmt = (type) => {
+            const v = type==='deposit' ? (Math.random()*5000+500) : (Math.random()*1500+50);
+            return parseFloat(v.toFixed(2));
+        };
+
+        // Iterate month by month
+        let cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+        const endCursor = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+
+        // We'll start from a synthetic running balance baseline that does not affect account.balance
+        let running = parseFloat(account.balance.toString());
+
+        const toCreate = [];
+        while (cursor <= endCursor) {
+            const year = cursor.getUTCFullYear();
+            const month = cursor.getUTCMonth();
+            const isStartMonth = (year === start.getUTCFullYear() && month === start.getUTCMonth());
+            const isEndMonth = (year === end.getUTCFullYear() && month === end.getUTCMonth());
+
+            const firstDay = isStartMonth ? start.getUTCDate() : 1;
+            const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+            const lastDay = isEndMonth ? end.getUTCDate() : lastDayOfMonth;
+
+            const count = Math.floor(Math.random() * (maxPerMonth - minPerMonth + 1)) + minPerMonth;
+
+            for (let i = 0; i < count; i++) {
+                // Random day within the allowed range
+                const day = Math.floor(Math.random() * (lastDay - firstDay + 1)) + firstDay;
+                const type = Math.random() < 0.45 ? 'deposit' : 'withdrawal';
+                let amt = randAmt(type);
+                // Avoid negative running balance
+                if (type === 'withdrawal' && running - amt < 0) {
+                    if (running <= 0) {
+                        // force deposit instead
+                        amt = randAmt('deposit');
+                    } else {
+                        amt = Math.max(5, running * Math.random());
+                    }
+                }
+
+                const desc = pickDesc(type);
+                const dateStr = `${year}-${(month+1).toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}`;
+                const timeStr = randTime();
+                const txDate = new Date(`${dateStr}T${timeStr}:00Z`);
+                if (txDate < start || txDate > end) continue;
+
+                // Update synthetic running
+                running = type === 'deposit' ? (running + amt) : (running - amt);
+
+                toCreate.push({
+                    accountId: account._id,
+                    userId,
+                    type,
+                    amount: mongoose.Types.Decimal128.fromString(amt.toFixed(2)),
+                    description: desc,
+                    balanceAfter: mongoose.Types.Decimal128.fromString(running.toFixed(2)),
+                    transactionDate: txDate,
+                    // Ensure ordering: set createdAt/updatedAt to txDate
+                    createdAt: txDate,
+                    updatedAt: txDate,
+                    ...(type === 'withdrawal' ? { withdrawalMethod: desc } : {})
+                });
+            }
+
+            // Move to next month
+            cursor = new Date(Date.UTC(year, month + 1, 1));
+        }
+
+        if (toCreate.length === 0) {
+            return res.status(200).json({ success: true, message: 'No transactions to create in given range', created: 0 });
+        }
+
+        // Create all documents in one go; timestamps preserved because we pass createdAt
+        const created = await Transaction.insertMany(toCreate, { ordered: false });
+        return res.status(201).json({ success: true, message: 'Transactions populated', created: created.length });
+    } catch (error) {
+        console.error(logPrefix, error);
+        next(error);
+    }
+};
+
 // No default export needed if using named exports consistently
