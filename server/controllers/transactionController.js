@@ -432,4 +432,53 @@ export const deleteAllUserTransactions = async (req, res, next) => {
     }
 };
 
+// Delete a specific transaction by ID (and adjust account balance)
+export const deleteTransaction = async (req, res, next) => {
+    const logPrefix = '>>> deleteTransaction:';
+    try {
+        if (!req.user || !req.user._id) { const error = new Error('Not authorized'); error.statusCode = 401; return next(error); }
+        const userId = req.user._id;
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            const error = new Error('Invalid transaction ID'); error.statusCode = 400; return next(error);
+        }
+
+        // Find transaction and ensure it belongs to the user
+        const txn = await Transaction.findOne({ _id: id, userId });
+        if (!txn) { const error = new Error('Transaction not found'); error.statusCode = 404; return next(error); }
+
+        // Find account
+        const account = await Account.findOne({ _id: txn.accountId, userId });
+        if (!account) { const error = new Error('Associated account not found or access denied'); error.statusCode = 404; return next(error); }
+
+        // Determine reverse effect on balance
+        const amount = parseFloat(txn.amount.toString());
+        const type = txn.type;
+        let current = parseFloat(account.balance.toString());
+
+        if (['deposit', 'transfer-in', 'interest', 'refund'].includes(type)) {
+            current -= amount; // reverse a credit
+        } else if (['withdrawal', 'transfer-out', 'fee'].includes(type)) {
+            current += amount; // reverse a debit
+        } else {
+            const error = new Error('Unsupported transaction type for deletion'); error.statusCode = 400; return next(error);
+        }
+
+        if (current < 0) { current = 0; }
+        account.balance = mongoose.Types.Decimal128.fromString(current.toFixed(2));
+
+        // Apply updates atomically where possible
+        await Promise.all([
+            account.save(),
+            Transaction.deleteOne({ _id: txn._id })
+        ]);
+
+        return res.status(200).json({ success: true, message: 'Transaction deleted', newBalance: account.balance.toString(), deletedId: txn._id });
+    } catch (error) {
+        console.error(logPrefix, error);
+        next(error);
+    }
+};
+
 // No default export needed if using named exports consistently

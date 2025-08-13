@@ -9,7 +9,8 @@ import {
     getTransactionsForAccount,
     initiateTransfer,          // NEW: Initiate OTP flow
     executeTransfer,            // NEW: Execute after OTP
-    deleteAllUserTransactions
+    deleteAllUserTransactions,
+    deleteTransaction           // NEW: Delete a specific transaction
 } from '../controllers/transactionController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { validateRequest } from '../middleware/validateRequest.js';
@@ -127,6 +128,14 @@ router.get(
 
 // Add route to delete all transactions for the authenticated user
 router.delete('/all', deleteAllUserTransactions);
+
+// DELETE /api/transactions/:id - Delete a specific transaction
+router.delete(
+    '/:id',
+    [param('id', 'Valid transaction id required').isMongoId()],
+    validateRequest,
+    deleteTransaction
+);
 
 
 export default router;
